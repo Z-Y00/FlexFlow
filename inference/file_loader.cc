@@ -84,7 +84,9 @@ void load_attention_bias(float *ptr,
 
   for (auto file : bias_files) {
     size_t partial_size = hidden_dim;
+    // std::cout << "Loading filename: " << file << std::endl;
     std::ifstream in(file, std::ios::in | std::ios::binary);
+    assert(in.good() && "incorrect bias file path");
     std::vector<float> host_array(partial_size);
     size_t loaded_data_size = sizeof(float) * partial_size;
     in.seekg(0, in.end);
@@ -147,6 +149,11 @@ void load_attention_weights(float *ptr,
     size_t partial_size = one_weight_file_size;
 
     std::ifstream in(file, std::ios::in | std::ios::binary);
+    // std::cout << "Loading filename: " << file << std::endl;
+    if (!in.good()) {
+      std::cout << "Could not open file: " << file << std::endl;
+    }
+    assert(in.good() && "incorrect weight file path");
     std::vector<float> host_array(partial_size);
     size_t loaded_data_size = sizeof(float) * partial_size;
     in.seekg(0, in.end);
@@ -177,7 +184,12 @@ void load_attention_weights(float *ptr,
 }
 
 void load_from_file(float *ptr, size_t size, std::string filename) {
+  // std::cout << "Loading filename: " << filename << std::endl;
   std::ifstream in(filename, std::ios::in | std::ios::binary);
+  if (!in.good()) {
+    std::cout << "Could not open file: " << filename << std::endl;
+  }
+  assert(in.good() && "incorrect weight file path");
   std::vector<float> host_array(size);
   size_t loaded_data_size = sizeof(float) * size;
   in.seekg(0, in.end);
@@ -247,13 +259,15 @@ void FileDataLoader::load_weights(
       assert(weight->data_type == DT_FLOAT);
       float *data = (float *)malloc(sizeof(float) * volume);
 
-      if (v.first.find("attention_w") != std::string::npos) {
+      std::string file_path = (v.first.back() == '/') ? v.first : "/" + v.first;
+
+      if (file_path.find("attention_w") != std::string::npos) {
         if (i == 0) {
           load_attention_weights(data,
                                  num_heads,
                                  hidden_dim,
                                  qkv_inner_dim,
-                                 v.first,
+                                 file_path,
                                  weight_file_path,
                                  volume);
         } else {
@@ -261,16 +275,15 @@ void FileDataLoader::load_weights(
                               num_heads,
                               hidden_dim,
                               qkv_inner_dim,
-                              v.first,
+                              file_path,
                               weight_file_path);
         }
 
       } else {
-        std::string file_path = v.first;
         if (i > 0) {
-          int index = v.first.find("_weight");
+          int index = file_path.find("_weight");
           assert(index != std::string::npos);
-          file_path = v.first.substr(0, index) + "_bias";
+          file_path = file_path.substr(0, index) + "_bias";
         }
         load_from_file(data, volume, weight_file_path + file_path);
       }

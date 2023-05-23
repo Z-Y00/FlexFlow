@@ -53,12 +53,12 @@ option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if ava
 option(FF_USE_ALL_PREBUILT_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
 
 # option for using Python
-option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
 set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
 set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
 set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
+set(FF_LEGION_NETWORKS "" CACHE STRING "Network backend(s) to use")
 
-if (FF_GASNET_CONDUIT STREQUAL "ucx")
+if ((FF_LEGION_NETWORKS STREQUAL "gasnet" AND FF_GASNET_CONDUIT STREQUAL "ucx") OR FF_LEGION_NETWORKS STREQUAL "ucx")
     if("${FF_UCX_URL}" STREQUAL "")
         set(UCX_URL "https://github.com/openucx/ucx/releases/download/v1.14.0-rc1/ucx-1.14.0.tar.gz")
     else()
@@ -123,7 +123,7 @@ if (FF_GASNET_CONDUIT STREQUAL "ucx")
         execute_process(COMMAND tar xzf ${UCX_COMPRESSED_FILE_PATH} -C ${UCX_DIR} --strip-components 1)
         message(STATUS "Building UCX...")
         execute_process(
-            COMMAND sh -c "cd ${UCX_DIR} && ${UCX_DIR}/contrib/configure-release --prefix=${UCX_DIR}/install && make -j8 && make install"
+            COMMAND sh -c "cd ${UCX_DIR} && ${UCX_DIR}/contrib/configure-release --prefix=${UCX_DIR}/install --enable-mt && make -j8 && make install"
             RESULT_VARIABLE UCX_BUILD_STATUS
             OUTPUT_FILE ${UCX_BUILD_OUTPUT}
             ERROR_FILE ${UCX_BUILD_OUTPUT}
@@ -137,7 +137,15 @@ if (FF_GASNET_CONDUIT STREQUAL "ucx")
         file(WRITE ${UCX_CONFIG_FILE} "${UCX_URL}")
     endif()
 
-    set(ENV{UCX_HOME} "${UCX_DIR}/install")
+    if (FF_LEGION_NETWORKS STREQUAL "gasnet" AND FF_GASNET_CONDUIT STREQUAL "ucx")
+        set(ENV{UCX_HOME} "${UCX_DIR}/install")
+    endif()
+
+    if (FF_LEGION_NETWORKS STREQUAL "ucx")
+        set(ucx_DIR ${UCX_DIR}/cmake)
+        set(ENV{Legion_NETWORKS} "ucx")
+        message(STATUS "Legion_NETWORKS: $ENV{Legion_NETWORKS}")
+    endif()
 else()
     message(STATUS "FF_GASNET_CONDUIT: ${FF_GASNET_CONDUIT}")
 endif()
@@ -178,19 +186,10 @@ set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
 
 # Set global FLAGS
-if(INFERENCE_TESTS)
 list(APPEND CC_FLAGS
   -std=c++17)
-
 list(APPEND NVCC_FLAGS
   -std=c++17)
-else()
-list(APPEND CC_FLAGS
-  -std=c++17)
-
-list(APPEND NVCC_FLAGS
-  -std=c++17)
-endif()
 
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
@@ -476,6 +475,9 @@ if(FF_BUILD_VISUALIZATION_TOOL)
 endif()
 
 if(FF_BUILD_SENTENCEPIECE OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
+  if (FF_GPU_BACKEND STREQUAL "hip_rocm")
+    SET(SPM_USE_BUILTIN_PROTOBUF OFF CACHE BOOL "Use builtin version of protobuf to compile SentencePiece")
+  endif()
   add_subdirectory(deps/sentencepiece sentencepiece EXCLUDE_FROM_ALL)
   target_include_directories(flexflow PUBLIC deps/sentencepiece/src)
   target_link_libraries(flexflow sentencepiece)
@@ -548,21 +550,10 @@ if(FF_BUILD_MOE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
 endif()
 
 if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/LLAMA)
-endif()
-
-if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/opt)
-endif()
-
-if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/llama_spec_pipeline)
   add_subdirectory(inference/spec_infer)
+  add_subdirectory(inference/incr_decoding)
 endif()
 
-if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/opt_spec_pipeline)
-endif()
 
 # installation
 set(INCLUDE_DEST "include")
