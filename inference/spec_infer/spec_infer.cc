@@ -116,10 +116,21 @@ void FlexFlow::top_level_task(Task const *task,
   double beamsearch = 0.0;
   // start timer
   gettimeofday(&t1, NULL);
-
+  int counter = 0;
 
   while (rm.get_num_processed_requests() < total_num_requests) {
+    counter++;
+    if (counter==30)
+    {
+      break;
+    }
+    
     int depth = 0;
+      // Execution fence
+    {
+      Future future = runtime->issue_execution_fence(ctx);
+      future.get_void_result();
+    }    
     gettimeofday(&t3, NULL);
 
     // Beam Search
