@@ -13,48 +13,6 @@
  * limitations under the License.
  */
 
-#ifndef __GPU_TIMER_H__
-#define __GPU_TIMER_H__
-
-struct GpuTimer
-{
-      cudaEvent_t start;
-      cudaEvent_t stop;
-
-      GpuTimer()
-      {
-            cudaEventCreate(&start);
-            cudaEventCreate(&stop);
-      }
-
-      ~GpuTimer()
-      {
-            cudaEventDestroy(start);
-            cudaEventDestroy(stop);
-      }
-
-      void Start()
-      {
-            cudaEventRecord(start, 0);
-      }
-
-      void Stop()
-      {
-            cudaEventRecord(stop, 0);
-      }
-
-      float Elapsed()
-      {
-            float elapsed;
-            cudaEventSynchronize(stop);
-            cudaEventElapsedTime(&elapsed, start, stop);
-            return elapsed;
-      }
-};
-
-#endif  /* __GPU_TIMER_H__ */
-
-
 #include "flexflow/inference.h"
 #include "flexflow/tokenizers.h"
 #include "models/llama.h"
@@ -63,7 +21,6 @@ struct GpuTimer
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("llama");
-GpuTimer t1,t2;
 
 struct FilePaths {
   std::string llm_weight_file_path;
@@ -152,11 +109,8 @@ void FlexFlow::top_level_task(Task const *task,
   BeamSearchBatchConfig beam_bc;
   InferenceResult tree_ir;
 
-  t1.Start();
-  float bc = 0.0;
   while (rm.get_num_processed_requests() < total_num_requests) {
     int depth = 0;
-    t2.Start();
     // Beam Search
     beam_bc = rm.prepare_next_batch_init(tree_bc, tree_ir);
     if (rm.get_num_processed_requests() >= total_num_requests) {
@@ -174,9 +128,6 @@ void FlexFlow::top_level_task(Task const *task,
         beam_bc = rm.prepare_next_batch_beam(beam_bc, beam_ir);
       }
     }
-    t2.Stop();
-    bc += t2.Elapsed();
-
     // Token Tree Verification
     {
       tree_bc = rm.prepare_next_batch_verify(beam_bc);
@@ -186,8 +137,6 @@ void FlexFlow::top_level_task(Task const *task,
       tree_ir = future.get_result<InferenceResult>();
     }
   }
-  t1.Stop();
-  float total = t1.Elapsed();
 
   // Execution fence
   {
@@ -197,7 +146,6 @@ void FlexFlow::top_level_task(Task const *task,
 
   // float* data
   std::cout << "----------inference finished--------------" << std::endl;
-  std::cout<< "total: " <<total << " beam search: "<<bc <<" fraction: " << bc/total << std::endl;
 }
 
 void FlexFlow::register_custom_tasks() {}
