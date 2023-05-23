@@ -17,7 +17,7 @@
 #include "flexflow/tokenizers.h"
 #include "models/llama.h"
 #include <nlohmann/json.hpp>
-#include <sys/time.h>                // for //gettimeofday()
+// #include <sys/time.h>                // for //gettimeofday()
 
 using namespace Legion;
 
@@ -110,10 +110,10 @@ void FlexFlow::top_level_task(Task const *task,
   BeamSearchBatchConfig beam_bc;
   InferenceResult tree_ir;
   
-  struct timeval t1, t2;
-  struct timeval t3, t4;
-  double elapsedTime;
-  double beamsearch = 0.0;
+  // struct timeval t1, t2;
+  // struct timeval t3, t4;
+  // double elapsedTime;
+  // double beamsearch = 0.0;
   // start timer
   //gettimeofday(&t1, NULL);
 
@@ -145,8 +145,8 @@ void FlexFlow::top_level_task(Task const *task,
       future.get_void_result();
     }
     //gettimeofday(&t4, NULL);
-    beamsearch += (t4.tv_sec - t3.tv_sec) * 1000.0;      // sec to ms
-    beamsearch += (t4.tv_usec - t3.tv_usec) / 1000.0;   // us to ms
+    // beamsearch += (t4.tv_sec - t3.tv_sec) * 1000.0;      // sec to ms
+    // beamsearch += (t4.tv_usec - t3.tv_usec) / 1000.0;   // us to ms
     // Token Tree Verification
     {
       tree_bc = rm.prepare_next_batch_verify(beam_bc);
@@ -166,12 +166,12 @@ void FlexFlow::top_level_task(Task const *task,
   // stop timer
   //gettimeofday(&t2, NULL);
   // compute and print the elapsed time in millisec
-  elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
-  elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+  // elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+  // elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
 
   // float* data
   std::cout << "----------inference finished--------------" << std::endl;
-  std::cout<< "total: " <<elapsedTime << " beam search: "<<beamsearch <<" fraction: " << beamsearch/elapsedTime << std::endl;
+  // std::cout<< "total: " <<elapsedTime << " beam search: "<<beamsearch <<" fraction: " << beamsearch/elapsedTime << std::endl;
 }
 
 void FlexFlow::register_custom_tasks() {}
