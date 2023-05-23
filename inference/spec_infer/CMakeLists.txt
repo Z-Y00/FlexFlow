@@ -6,7 +6,7 @@ set(project_target spec_infer)
 
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
-  spec_infer.cc
+  spec_infer.cu
   ../file_loader.cc
   ../models/llama.cc
   ../models/opt.cc)
