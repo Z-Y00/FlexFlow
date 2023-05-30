@@ -182,11 +182,17 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
+    int counter = 0;
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
       rm.register_new_request(text, 128 /*max_sequence_length*/);
+      counter++;
+      if (counter==100)
+      {
+        break;
+      }           
     }
   }
 
@@ -233,14 +239,14 @@ void FlexFlow::top_level_task(Task const *task,
   double beamsearch = 0.0;
   // start timer
   gettimeofday(&t1, NULL);
-  int counter = 0;
+  // int counter = 0;
 
   while (rm.get_num_processed_requests() < total_num_requests) {
-    counter++;
-    if (counter==30)
-    {
-      break;
-    }
+    // counter++;
+    // if (counter==30)
+    // {
+    //   break;
+    // }
     
     int depth = 0;
       // Execution fence
